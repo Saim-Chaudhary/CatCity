@@ -1,26 +1,31 @@
 # CatCity Digital Twin 🐱
 
-A community cat mapping platform where users report cat sightings, 
-feeding stations, shelters, and rescue requests.
+A community cat mapping platform where users report cat sightings,
+feeding stations, shelters, and rescue requests — building a live
+digital twin of street cat activity to help volunteers and rescue
+organizations respond faster.
 
 ## 🚀 Tech Stack
 - React + Vite
 - Leaflet / React-Leaflet (interactive map)
-- More coming: Supabase (database), heatmap
+- leaflet.heat (heatmap visualization)
 
 ## ✅ Current Features
-- Interactive map loads on launch
-- Click anywhere on map to drop a cat pin
-- Popup confirms sighting location
+- Auto-detects user location and flies map to their city
+- Click anywhere on map to drop a report pin
+- Report types: Cat Sighting, Feeding Station, Shelter, Rescue Needed
+- Live heatmap showing cat activity hotspots
+- Stats bar showing live counts per category
+- Rescue count highlights red when rescue reports exist
 
 ## 🔜 Coming Soon
-- Report form (sighting / feeding / rescue types)
-- Save reports to database
-- Live heatmap of cat activity
-- Filter by report type
+- Supabase database (persist reports across sessions)
+- All users see same live data in real time
+- Filter map by report type
+- Deploy to Vercel
 
 ## 🛠️ Run Locally
-git clone <your-repo-url>
+git clone https://github.com/Saim-Chaudhary/CatCity.git
 cd catcity
 npm install
 npm run dev
