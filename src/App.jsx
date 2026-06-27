@@ -1,6 +1,7 @@
-import { useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet'
+import { useState, useEffect } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
+import 'leaflet.heat'
 
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
@@ -13,6 +14,17 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 })
 
+// Flies map to user location
+function LocationFlyTo({ userLocation }) {
+  const map = useMap()
+  useEffect(() => {
+    if (userLocation) {
+      map.flyTo([userLocation.lat, userLocation.lng], 14, { duration: 1.5 })
+    }
+  }, [userLocation])
+  return null
+}
+
 function ClickHandler({ onMapClick }) {
   useMapEvents({
     click: (e) => onMapClick(e.latlng)
@@ -20,7 +32,6 @@ function ClickHandler({ onMapClick }) {
   return null
 }
 
-// The form that appears when user clicks map
 function ReportForm({ latlng, onSubmit, onCancel }) {
   const [type, setType] = useState('sighting')
   const [notes, setNotes] = useState('')
@@ -78,7 +89,6 @@ function ReportForm({ latlng, onSubmit, onCancel }) {
   )
 }
 
-// Emoji per report type
 const typeEmoji = {
   sighting: '🐱',
   feeding: '🍽️',
@@ -89,6 +99,24 @@ const typeEmoji = {
 export default function App() {
   const [pins, setPins] = useState([])
   const [pendingLocation, setPendingLocation] = useState(null)
+  const [userLocation, setUserLocation] = useState(null)
+  const [locationStatus, setLocationStatus] = useState('asking') // asking | granted | denied
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationStatus('denied')
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setLocationStatus('granted')
+      },
+      () => {
+        setLocationStatus('denied')
+      }
+    )
+  }, [])
 
   const handleMapClick = (latlng) => {
     setPendingLocation(latlng)
@@ -111,13 +139,43 @@ export default function App() {
 
   return (
     <>
+      {/* Location asking overlay */}
+      {locationStatus === 'asking' && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+          zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{ background: 'white', padding: '32px', borderRadius: '12px', textAlign: 'center', maxWidth: '280px' }}>
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>🐱</div>
+            <h2 style={{ marginBottom: '8px' }}>CatCity</h2>
+            <p style={{ color: '#666', marginBottom: '0' }}>Finding your location to show nearby cats...</p>
+          </div>
+        </div>
+      )}
+
       <MapContainer
-        center={[31.45, 72.99]}
-        zoom={13}
+        center={[20, 0]}
+        zoom={2}
         style={{ height: '100vh', width: '100%' }}
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         <ClickHandler onMapClick={handleMapClick} />
+        <LocationFlyTo userLocation={userLocation} />
+
+        {/* Blue dot for user location */}
+        {userLocation && (
+          <Marker
+            position={[userLocation.lat, userLocation.lng]}
+            icon={L.divIcon({
+              className: '',
+              html: '<div style="width:14px;height:14px;background:#3b82f6;border:3px solid white;border-radius:50%;box-shadow:0 0 6px rgba(59,130,246,0.8)"></div>',
+              iconSize: [14, 14],
+              iconAnchor: [7, 7]
+            })}
+          >
+            <Popup>📍 You are here</Popup>
+          </Marker>
+        )}
 
         {pins.map(pin => (
           <Marker key={pin.id} position={[pin.lat, pin.lng]}>
@@ -130,7 +188,6 @@ export default function App() {
         ))}
       </MapContainer>
 
-      {/* Form overlay when location is picked */}
       {pendingLocation && (
         <ReportForm
           latlng={pendingLocation}
