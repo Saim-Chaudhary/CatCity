@@ -14,7 +14,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 })
 
-// Flies map to user location
+// ── 1. Fly to user location ──────────────────────────────
 function LocationFlyTo({ userLocation }) {
   const map = useMap()
   useEffect(() => {
@@ -25,6 +25,7 @@ function LocationFlyTo({ userLocation }) {
   return null
 }
 
+// ── 2. Click handler ─────────────────────────────────────
 function ClickHandler({ onMapClick }) {
   useMapEvents({
     click: (e) => onMapClick(e.latlng)
@@ -32,6 +33,31 @@ function ClickHandler({ onMapClick }) {
   return null
 }
 
+// ── 3. Heatmap layer ─────────────────────────────────────
+function HeatmapLayer({ pins }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!pins.length) return
+    const points = pins.map(pin => [pin.lat, pin.lng, 1])
+    const heat = L.heatLayer(points, {
+      radius: 35,
+      blur: 25,
+      maxZoom: 17,
+      gradient: {
+        0.2: 'blue',
+        0.4: 'cyan',
+        0.6: 'yellow',
+        0.8: 'orange',
+        1.0: 'red'
+      }
+    })
+    heat.addTo(map)
+    return () => map.removeLayer(heat)
+  }, [pins])
+  return null
+}
+
+// ── 4. Report form ───────────────────────────────────────
 function ReportForm({ latlng, onSubmit, onCancel }) {
   const [type, setType] = useState('sighting')
   const [notes, setNotes] = useState('')
@@ -41,54 +67,49 @@ function ReportForm({ latlng, onSubmit, onCancel }) {
     onSubmit({ latlng, type, notes })
   }
 
-  const formStyle = {
-    position: 'fixed',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    background: 'white',
-    padding: '24px',
-    borderRadius: '12px',
-    zIndex: 9999,
-    width: '300px',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
-  }
-
-  const labelStyle = { display: 'block', marginBottom: '6px', fontWeight: 'bold' }
-  const selectStyle = { width: '100%', padding: '8px', marginBottom: '16px', borderRadius: '6px', border: '1px solid #ccc' }
-  const textareaStyle = { width: '100%', padding: '8px', marginBottom: '16px', borderRadius: '6px', border: '1px solid #ccc', height: '80px', resize: 'none' }
-  const btnRowStyle = { display: 'flex', gap: '8px' }
-  const submitBtnStyle = { flex: 1, padding: '10px', background: '#f97316', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }
-  const cancelBtnStyle = { flex: 1, padding: '10px', background: '#e5e7eb', border: 'none', borderRadius: '6px', cursor: 'pointer' }
-
   return (
-    <div style={formStyle}>
+    <div style={{
+      position: 'fixed', top: '50%', left: '50%',
+      transform: 'translate(-50%, -50%)',
+      background: 'white', padding: '24px', borderRadius: '12px',
+      zIndex: 9999, width: '300px', boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+    }}>
       <h3 style={{ marginBottom: '16px' }}>🐱 Report a Cat</h3>
 
-      <label style={labelStyle}>Type</label>
-      <select style={selectStyle} value={type} onChange={e => setType(e.target.value)}>
+      <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold' }}>Type</label>
+      <select
+        style={{ width: '100%', padding: '8px', marginBottom: '16px', borderRadius: '6px', border: '1px solid #ccc' }}
+        value={type} onChange={e => setType(e.target.value)}
+      >
         <option value="sighting">🐱 Cat Sighting</option>
         <option value="feeding">🍽️ Feeding Station</option>
         <option value="shelter">🏠 Shelter</option>
         <option value="rescue">🚨 Rescue Needed</option>
       </select>
 
-      <label style={labelStyle}>Notes</label>
+      <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold' }}>Notes</label>
       <textarea
-        style={textareaStyle}
+        style={{ width: '100%', padding: '8px', marginBottom: '16px', borderRadius: '6px', border: '1px solid #ccc', height: '80px', resize: 'none' }}
         placeholder="Describe what you saw..."
         value={notes}
         onChange={e => setNotes(e.target.value)}
       />
 
-      <div style={btnRowStyle}>
-        <button style={submitBtnStyle} onClick={handleSubmit}>Submit</button>
-        <button style={cancelBtnStyle} onClick={onCancel}>Cancel</button>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button
+          style={{ flex: 1, padding: '10px', background: '#f97316', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+          onClick={handleSubmit}
+        >Submit</button>
+        <button
+          style={{ flex: 1, padding: '10px', background: '#e5e7eb', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+          onClick={onCancel}
+        >Cancel</button>
       </div>
     </div>
   )
 }
 
+// ── 5. Emoji map ─────────────────────────────────────────
 const typeEmoji = {
   sighting: '🐱',
   feeding: '🍽️',
@@ -96,50 +117,31 @@ const typeEmoji = {
   rescue: '🚨'
 }
 
+// ── 6. Main App ──────────────────────────────────────────
 export default function App() {
   const [pins, setPins] = useState([])
   const [pendingLocation, setPendingLocation] = useState(null)
   const [userLocation, setUserLocation] = useState(null)
-  const [locationStatus, setLocationStatus] = useState('asking') // asking | granted | denied
+  const [locationStatus, setLocationStatus] = useState('asking')
 
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setLocationStatus('denied')
-      return
-    }
+    if (!navigator.geolocation) { setLocationStatus('denied'); return }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
         setLocationStatus('granted')
       },
-      () => {
-        setLocationStatus('denied')
-      }
+      () => setLocationStatus('denied')
     )
   }, [])
 
-  const handleMapClick = (latlng) => {
-    setPendingLocation(latlng)
-  }
-
   const handleFormSubmit = ({ latlng, type, notes }) => {
-    setPins(prev => [...prev, {
-      id: Date.now(),
-      lat: latlng.lat,
-      lng: latlng.lng,
-      type,
-      notes
-    }])
-    setPendingLocation(null)
-  }
-
-  const handleCancel = () => {
+    setPins(prev => [...prev, { id: Date.now(), lat: latlng.lat, lng: latlng.lng, type, notes }])
     setPendingLocation(null)
   }
 
   return (
     <>
-      {/* Location asking overlay */}
       {locationStatus === 'asking' && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
@@ -153,16 +155,12 @@ export default function App() {
         </div>
       )}
 
-      <MapContainer
-        center={[20, 0]}
-        zoom={2}
-        style={{ height: '100vh', width: '100%' }}
-      >
+      <MapContainer center={[20, 0]} zoom={2} style={{ height: '100vh', width: '100%' }}>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <ClickHandler onMapClick={handleMapClick} />
+        <ClickHandler onMapClick={setPendingLocation} />
         <LocationFlyTo userLocation={userLocation} />
+        <HeatmapLayer pins={pins} />
 
-        {/* Blue dot for user location */}
         {userLocation && (
           <Marker
             position={[userLocation.lat, userLocation.lng]}
@@ -180,9 +178,7 @@ export default function App() {
         {pins.map(pin => (
           <Marker key={pin.id} position={[pin.lat, pin.lng]}>
             <Popup>
-              <strong>{typeEmoji[pin.type]} {pin.type.toUpperCase()}</strong>
-              <br />
-              {pin.notes}
+              <strong>{typeEmoji[pin.type]} {pin.type.toUpperCase()}</strong><br />{pin.notes}
             </Popup>
           </Marker>
         ))}
@@ -192,7 +188,7 @@ export default function App() {
         <ReportForm
           latlng={pendingLocation}
           onSubmit={handleFormSubmit}
-          onCancel={handleCancel}
+          onCancel={() => setPendingLocation(null)}
         />
       )}
     </>
